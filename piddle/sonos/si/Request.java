@@ -19,9 +19,10 @@ public class Request {
 	}
 
 	/**
-	 * Simulates a response to a request. In reality this would be some serialized
-	 * data consumable by a browser/application (JSON, HTML, images, etc) but for
-	 * this test we just need to know if a QA member consumed the request or not.
+	 * Simulates a response to a request. In reality this would send back some data
+	 * consumable by a browser/application (JSON, HTML, images, etc) but for this
+	 * test we need to know if a QA member consumed the request and the time it was
+	 * consumed not.
 	 */
 	public void end(ResponseType resp) {
 		long curTime = ZonedDateTime.now().toInstant().toEpochMilli();
@@ -41,7 +42,34 @@ public class Request {
 		}
 	}
 
-	public Response checkCompletion() {
+	/**
+	 * Simulates a response to a request. In reality this would send back some data
+	 * consumable by a browser/application (JSON, HTML, images, etc) but for this
+	 * test we need to know if a QA member consumed the request and the time it was
+	 * consumed not.
+	 */
+	public void end(ResponseType resp, long curTime) {
+		switch (resp) {
+		case CONSUMED:
+			this.future.complete(new Response(curTime, resp));
+			break;
+		case REJECTED:
+			this.future.complete(new Response(curTime, resp));
+			break;
+		case TEST_ACCEPT:
+			this.future.complete(new Response(curTime, resp));
+			break;
+		case TEST_REJ:
+			this.future.complete(new Response(curTime, resp));
+			break;
+		}
+	}
+
+	public void error(Exception e) {
+		this.future.completeExceptionally(e);
+	}
+
+	public Response getResponse() {
 		return future.join();
 	}
 }

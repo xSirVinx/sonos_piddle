@@ -24,5 +24,5 @@ package piddle.sonos.si;
  *
  */
 public enum ResponseType {
-	CONSUMED, REJECTED, TEST_ACCEPT, TEST_REJ;
+	CONSUMED, REJECTED, TEST_ACCEPT, TEST_REJ, ERROR;
 }

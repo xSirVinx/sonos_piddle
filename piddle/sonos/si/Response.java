@@ -8,9 +8,9 @@ package piddle.sonos.si;
  * @author Scott
  *
  */
-public class Response {
+public class Response implements Comparable<Response> {
 	private Long time;
-	ResponseType type;
+	private ResponseType type;
 
 	public Response(Long time, ResponseType type) {
 		this.time = time;
@@ -23,6 +23,17 @@ public class Response {
 
 	public ResponseType getResponseType() {
 		return this.type;
+	}
+
+	@Override
+	public int compareTo(Response resp) {
+		if (this.time - resp.getTime() < 0) {
+			return -1;
+		} else if (this.time - resp.getTime() > 0) {
+			return 1;
+		} else {
+			return 0;
+		}
 	}
 
 }
