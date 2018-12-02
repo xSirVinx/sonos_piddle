@@ -1,22 +1,28 @@
 package piddle.sonos.si;
 
 import java.util.ArrayList;
-import java.util.concurrent.ExecutorService;
 
 public class QAManager {
+	private ThreadSafeThreadPoolManager exec = null;
 	private ArrayList<QATeamMember> qaTeam = null;
-	private ExecutorService exec;
 
-	public QAManager(int teamSize, ExecutorService exec, int timeToCompleteJobMils) {
-		this.exec = exec;
-		qaTeam = new ArrayList<QATeamMember>();
+	/**
+	 * 
+	 * @param teamSize
+	 * @param threadPoolSize
+	 * @param timeToCompleteJobMils
+	 */
+	public QAManager(int teamSize, int threadPoolSize, int timeToCompleteJobMils) {
+		this.exec = new ThreadSafeThreadPoolManager(threadPoolSize);
+		this.qaTeam = new ArrayList<QATeamMember>();
 
 		for (int x = 0; x < teamSize; x++) {
 			qaTeam.add(new QATeamMember(this.exec, timeToCompleteJobMils));
 		}
+
 	}
 
-	public boolean canTest() {
+	public boolean canSellHydrant() {
 		for (QATeamMember t : this.qaTeam) {
 			if (t.canTest()) {
 				return true;
@@ -25,13 +31,17 @@ public class QAManager {
 		return false;
 	}
 
-	public boolean runTest() {
+	public boolean sellHydrant() {
 		for (QATeamMember t : this.qaTeam) {
 			if (t.runTest()) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	public void shutDown() {
+		this.exec.shutDown();
 	}
 
 }
