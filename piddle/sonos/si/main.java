@@ -14,9 +14,11 @@ public class Main {
 	public static void main(String args[]) {
 
 		// Test configuration variables
-		int numSales = 1000;
+		int numSales = 10000;
 		int numQAWorkers = 1;
-		int timeToCompleteJobMils = 10;
+		int timeToCompleteJobMils = 50;
+		int testsPerWindow = 5;
+		int windowLength = 600;
 
 		/*
 		 * Optimally, we dont create more threads that we have CPUs/cores. There are two
@@ -26,7 +28,8 @@ public class Main {
 		 */
 		int maxConcurThreads = Runtime.getRuntime().availableProcessors() - 2;
 
-		QAManager manager = new QAManager(numQAWorkers, maxConcurThreads, timeToCompleteJobMils);
+		QAManager manager = new QAManager(numQAWorkers, maxConcurThreads, timeToCompleteJobMils,
+				testsPerWindow, windowLength);
 		ArrayList<Request> requests = new ArrayList<Request>();
 		ExecutorService exec = Executors.newFixedThreadPool(1);
 
@@ -40,6 +43,8 @@ public class Main {
 
 		assert checkResponseOrder(responses,
 				timeToCompleteJobMils) : "Found sales or button-show action that occured while QA was busy";
+		assert checkBreaksRespected(responses, timeToCompleteJobMils, testsPerWindow,
+				windowLength) : "QA member did not take the breaks he was owed.";
 
 		HashMap<String, Long> salesStats = parseSalesStats(responses);
 		HashMap<String, Long> inqueryStats = parseInqueryStats(responses);
@@ -208,6 +213,26 @@ public class Main {
 
 			if (resp.getResponseType() == ResponseType.CONSUMED) {
 				time = resp.getTime();
+			}
+		}
+		return true;
+	}
+
+	public static boolean checkBreaksRespected(List<Response> responses, int timeToCompleteJobMils,
+			int testsPerWindow, int windowLength) {
+
+		List<Response> attendedResponses = responses.stream()
+				.filter(resp -> resp.getResponseType() == ResponseType.CONSUMED).sorted()
+				.collect(Collectors.toList());
+
+		if (attendedResponses.size() <= testsPerWindow) {
+			return true;
+		}
+
+		for (int x = testsPerWindow; x < attendedResponses.size(); x++) {
+			if ((attendedResponses.get(x).getTime()
+					- attendedResponses.get(x - testsPerWindow).getTime()) < windowLength) {
+				return false;
 			}
 		}
 		return true;

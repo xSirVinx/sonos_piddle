@@ -12,12 +12,14 @@ public class QAManager {
 	 * @param threadPoolSize
 	 * @param timeToCompleteJobMils
 	 */
-	public QAManager(int teamSize, int threadPoolSize, int timeToCompleteJobMils) {
+	public QAManager(int teamSize, int threadPoolSize, int timeToCompleteJobMils,
+			int testsPerWindow, int windowLength) {
 		this.exec = new ThreadSafeThreadPoolManager(threadPoolSize);
 		this.qaTeam = new ArrayList<QATeamMember>();
 
 		for (int x = 0; x < teamSize; x++) {
-			qaTeam.add(new QATeamMember(this.exec, timeToCompleteJobMils));
+			qaTeam.add(new QATeamMember(this.exec, timeToCompleteJobMils, testsPerWindow,
+					windowLength));
 		}
 
 	}
