@@ -1,6 +1,5 @@
 package piddle.sonos.si;
 
-import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.UUID;
@@ -14,9 +13,8 @@ public class QATeamMember {
 	private int timeToCompleteJob = 0;
 	private Queue<Long> testQueue = null;
 	private String uuid = null;
-
 	private int testsPerWindow = 0;
-	private int windowTime = 0;
+	private int windowLength = 0;
 
 	public QATeamMember(ThreadSafeThreadPoolManager exec, int timeToCompleteJob, int testsPerWindow,
 			int windowLength) {
@@ -25,16 +23,22 @@ public class QATeamMember {
 		this.testQueue = new LinkedList<Long>();
 		this.uuid = UUID.randomUUID().toString();
 		this.testsPerWindow = testsPerWindow;
-		this.windowTime = windowLength;
+		this.windowLength = windowLength;
+
 	}
 
-	public boolean canTest() {
-		return (!isOnBreak() && isFree.get());
+	public boolean canTest(long curTime) {
+		return (!isOnBreak(curTime) && isFree.get());
 	}
 
-	public boolean runTest() {
-		if (!isOnBreak() && this.isFree.compareAndSet(true, false)) {
+	public boolean runTest(long curTime) {
+		if (!isOnBreak(curTime) && this.isFree.compareAndSet(true, false)) {
 			try {
+				if (testQueue.size() == this.testsPerWindow) {
+					testQueue.remove();
+				}
+				testQueue.add(curTime + this.windowLength);
+
 				qaThreadPool.submit(() -> {
 					try {
 						TimeUnit.MILLISECONDS.sleep(this.timeToCompleteJob);
@@ -57,16 +61,12 @@ public class QATeamMember {
 		return this.uuid;
 	}
 
-	private synchronized boolean isOnBreak() {
-		long curTime = ZonedDateTime.now().toInstant().toEpochMilli();
-		if (testQueue.size() == this.testsPerWindow
-				&& curTime - testQueue.peek().longValue() < this.windowTime) {
-			return true;
-		} else if (testQueue.size() == this.testsPerWindow) {
-			testQueue.remove();
+	private synchronized boolean isOnBreak(long curTime) {
+		if (testQueue.size() < this.testsPerWindow) {
+			return false;
+		} else {
+			return curTime <= testQueue.peek().longValue();
 		}
-		testQueue.add(curTime);
-		return false;
 	}
 
 }

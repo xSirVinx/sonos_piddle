@@ -1,6 +1,5 @@
 package piddle.sonos.si;
 
-import java.time.ZonedDateTime;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -12,34 +11,13 @@ import java.util.concurrent.CompletableFuture;
  *
  */
 public class Request {
+
 	private CompletableFuture<Response> future;
+	private Response resp = null;
 
 	public Request() {
 		this.future = new CompletableFuture<Response>();
-	}
-
-	/**
-	 * Simulates a response to a request. In reality this would send back some data
-	 * consumable by a browser/application (JSON, HTML, images, etc) but for this
-	 * test we need to know if a QA member consumed the request and the time it was
-	 * consumed not.
-	 */
-	public void end(ResponseType resp) {
-		long curTime = ZonedDateTime.now().toInstant().toEpochMilli();
-		switch (resp) {
-		case CONSUMED:
-			this.future.complete(new Response(curTime, resp));
-			break;
-		case REJECTED:
-			this.future.complete(new Response(curTime, resp));
-			break;
-		case TEST_ACCEPT:
-			this.future.complete(new Response(curTime, resp));
-			break;
-		case TEST_REJ:
-			this.future.complete(new Response(curTime, resp));
-			break;
-		}
+		this.resp = new Response();
 	}
 
 	/**
@@ -49,18 +27,23 @@ public class Request {
 	 * consumed not.
 	 */
 	public void end(ResponseType resp, long curTime) {
+		this.getResponse().setResponseTime(curTime);
 		switch (resp) {
 		case CONSUMED:
-			this.future.complete(new Response(curTime, resp));
+			this.getResponse().setResponseType(ResponseType.CONSUMED);
+			this.future.complete(this.resp);
 			break;
 		case REJECTED:
-			this.future.complete(new Response(curTime, resp));
+			this.getResponse().setResponseType(ResponseType.REJECTED);
+			this.future.complete(this.resp);
 			break;
 		case TEST_ACCEPT:
-			this.future.complete(new Response(curTime, resp));
+			this.getResponse().setResponseType(ResponseType.TEST_ACCEPT);
+			this.future.complete(this.resp);
 			break;
 		case TEST_REJ:
-			this.future.complete(new Response(curTime, resp));
+			this.getResponse().setResponseType(ResponseType.TEST_REJ);
+			this.future.complete(this.resp);
 			break;
 		}
 	}
@@ -70,6 +53,10 @@ public class Request {
 	}
 
 	public Response getResponse() {
-		return future.join();
+		return this.resp;
+	}
+
+	public Response checkResponse() {
+		return this.future.join();
 	}
 }

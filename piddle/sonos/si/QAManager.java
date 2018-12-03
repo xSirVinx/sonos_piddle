@@ -24,18 +24,20 @@ public class QAManager {
 
 	}
 
-	public boolean canSellHydrant() {
+	public boolean canSellHydrant(long curTime, Request req) {
 		for (QATeamMember t : this.qaTeam) {
-			if (t.canTest()) {
+			if (t.canTest(curTime)) {
+				req.getResponse().setFulfilledBy(t.getUUID());
 				return true;
 			}
 		}
 		return false;
 	}
 
-	public boolean sellHydrant() {
+	public boolean sellHydrant(long curTime, Request req) {
 		for (QATeamMember t : this.qaTeam) {
-			if (t.runTest()) {
+			if (t.runTest(curTime)) {
+				req.getResponse().setFulfilledBy(t.getUUID());
 				return true;
 			}
 		}
