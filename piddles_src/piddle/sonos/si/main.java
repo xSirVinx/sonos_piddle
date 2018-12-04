@@ -52,8 +52,8 @@ public class Main {
 		 *    thread that creates all of the requests. Rule of thumb is that thread count
 		 *    should be numCores or numCores+1 to avoid resource thrashing. On my 4 core machine,
 		 *    there are 2 cores unused by the test harness, essentially making it a 2 core
-		 *    machine from the applications standpoint. Running the app several times, i
-		 *    got the best performance when i give the application 3 threads, which is the
+		 *    machine from the application's standpoint. Running the app several times, i
+		 *    got the best performance when i gave the application 3 threads, which is the
 		 *    number of unused cores plus 1.
 		 * 
 		 * QAManager - manages the QA team members. Also implements the canSellHydrant and sellHydrant methods
@@ -188,8 +188,8 @@ public class Main {
 	 * is working properly (i.e., it ties up a QA worker for the appropriate amount
 	 * of time, rendering them unable to consume other requests).
 	 * 
-	 * For each QA worker, this methods checks that the worker did not consume a
-	 * sale or positively acknowledge a canSellHydrant inquiry during the time a QA
+	 * For each QA worker, this method checks that the worker did not consume a sale
+	 * or positively acknowledge a canSellHydrant inquiry during the time a QA
 	 * worker should have been testing a hydrant (i.e., from the moment of each
 	 * consumed request to timeToCompleteJobMils later).
 	 * 
@@ -243,8 +243,8 @@ public class Main {
 	public static boolean checkBreaksRespected(List<Response> responses, int timeToCompleteJobMils,
 			int testsPerWindow, int windowLength) {
 
-		// filter the response array to consumed sales and positively acknowledged
-		// inquiries. Organize the arrays by QA worker UUID
+		// filter the response array to consumed sales. Organize the arrays by QA worker
+		// UUID
 		Map<String, List<Response>> attendedResponses = responses.stream()
 				.filter(resp -> resp.getResponseType() == ResponseType.CONSUMED)
 				.collect(Collectors.groupingBy(resp -> resp.getFulfilledBy()));
@@ -254,7 +254,7 @@ public class Main {
 			List<Response> fulfilledByResponses = attendedResponses.get(key).stream().sorted()
 					.collect(Collectors.toList());
 
-			// if the workers hasnt filled up the window then there is no need for a break;
+			// if the worker hasnt filled up the window then there is no need for a break;
 			if (fulfilledByResponses.size() <= testsPerWindow) {
 				break;
 			}
@@ -280,7 +280,7 @@ public class Main {
 	 * 
 	 * There is some wasted time in generating requests, testing conditionals, and
 	 * context switching between threads, so not every QA worker will finish a QA
-	 * test after exactly timeToCompleteJobMils. The method below tests to see if a
+	 * test in exactly timeToCompleteJobMils. The method below tests to see if a
 	 * rejected sellHydrant call could have been attended to by a QA worker had the
 	 * system been 100% efficient.
 	 * 

@@ -14,6 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 
  * Uses a synchronized method to test if the worker should be on break.
  * 
+ * Note: I am using an AtomicBoolean over a ReentrantLock because testing a
+ * lock.tryLock() results in the lock being grabbed if it is available. This
+ * isnt the behavior we want in the canTest method. An AtomicBoolean works as
+ * well as a lock and doesnt have unintentional side effects.
+ * 
  * @author Scott
  *
  */
@@ -96,8 +101,8 @@ public class QATeamMember {
 	 * and canTest (via the QAManager) asyncronously. Both of those methods call
 	 * isOnBreak to test if the QA worker is on break. To prevent errors associated
 	 * with async calls, isOnBreak is synchonized so that only one thread at a time
-	 * can access it. The result will be that the request thread will block a little
-	 * longer waiting to access this method.
+	 * can access it. The result will be that the request thread will potentially be
+	 * blocked while waiting to access this method.
 	 * 
 	 * A different option for managing the worker breaks could have been to use the
 	 * executor threadpool to schedule an event that would flip a second

@@ -6,6 +6,16 @@ package piddle.sonos.si;
  * applicable). The time values are used by the unit tests to validate that the
  * QA team was or was not busy when the request was received.
  * 
+ * Note: If i did this again, i wouldnt use the Response object to record
+ * information. I'd setup a SQLite database and write to it on Request creation
+ * and end (i.e., record the request creation time and the response time). In a
+ * real system, you'd want to log requests anyway both for security auditability
+ * and to harvest click-through data. I think it would have been easier to query
+ * a SQL database than deal with streams of Responses (as i did in the unit
+ * tests in the Main function). I also feel like recording the information in
+ * the Response toes the line of pushing Unit testing code into the application
+ * logic, which i dont like.
+ * 
  * @author Scott
  *
  */

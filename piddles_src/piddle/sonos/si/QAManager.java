@@ -5,7 +5,7 @@ import java.util.ArrayList;
 /**
  * The QA manager is an entry point to submitting jobs to the QA team.
  * 
- * The managers main goal is distributing jobs to available QA team members and
+ * The manager's main goal is distributing jobs to available QA team members and
  * keeping the threadpool, shared across all QA team members, thread safe.
  * 
  * @author Scott
