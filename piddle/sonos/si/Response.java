@@ -1,9 +1,10 @@
 package piddle.sonos.si;
 
 /**
- * The response class tracks what type of response was issued and the time at
- * which it was issued. We use the time values to validate that the QA team
- * was/was not busy when the request was received.
+ * The response class tracks what type of response was issued, the time at which
+ * it was issued, as well as the QA worker that consumed/accepted it (if
+ * applicable). The time values are used by the unit tests to validate that the
+ * QA team was or was not busy when the request was received.
  * 
  * @author Scott
  *
@@ -46,6 +47,9 @@ public class Response implements Comparable<Response> {
 		return this.type;
 	}
 
+	/**
+	 * Method required to use stream.sort
+	 */
 	@Override
 	public int compareTo(Response resp) {
 		if (this.time - resp.getTime().longValue() < 0) {

@@ -6,9 +6,9 @@ package piddle.sonos.si;
  * 
  * @formatter:off
  * 
- * 				CONSUMED -- a QA team member is acting on the request.
+ * 				CONSUMED -- a QA team member is acting on the sales request.
  * 
- *                REJECTED -- a QA team member was asked to act on the request
+ *                REJECTED -- a QA team member was asked to act on the sales request
  *                but could not.
  * 
  *                TEST_ACCEPT -- a QA team member was asked if they are

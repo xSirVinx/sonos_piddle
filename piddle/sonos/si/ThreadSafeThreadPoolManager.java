@@ -6,23 +6,10 @@ import java.util.concurrent.Future;
 
 /**
  * The ThreadPoolManager is a wrapper that facilitates use of a thread safe
- * ExecutorService.
- * 
- * There were a couple ways to implement the ThreadPool manager. One of them
- * would have been to put the ExecutorService into the QAManager and let the
- * QAManager manage the pool for the QATeam. However, this application uses a
- * thread to generate randomly submitted, simulated requests. The request thread
- * could have its own ExecutorService but it seems like a waste of a thread. The
- * computers that this code runs on will likely have between 2 to 8 cores, with
- * most probably having 4 cores. Generally, an optimized number of threads in a
- * pool is equal to the number of cores. With so few cores, it'd be nice to put
- * the request thread back into the pool once it is done executing, as it should
- * complete pretty quickly, thus giving the QATeam an additional thread to work
- * on.
- * 
- * Putting the request thread in the threadpool does introduce a problem though.
- * The QATeam could consume all the threads in the pool, leaving no thread for
- * the requests to be made on,
+ * ExecutorService. All the QA team members are executing jobs on
+ * asynchronously. In order to ensure synchronous access to the shared
+ * ThreadPool, this method uses synchronized functions to wrap submission of
+ * runnables.
  * 
  * @author Scott
  *

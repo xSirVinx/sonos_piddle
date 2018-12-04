@@ -7,6 +7,10 @@ import java.util.concurrent.CompletableFuture;
  * readability given that the scenario being imagined is an HTTP request being
  * made to a server.
  * 
+ * The request contains a CompletableFuture that resolves a Response. A Response
+ * records the time the response was made, the ResponseType, and if applicable,
+ * the QA team member who consumed/accepted the request.
+ * 
  * @author Scott
  *
  */
@@ -20,6 +24,12 @@ public class Request {
 		this.resp = new Response();
 	}
 
+	/**
+	 * Terminate a request (i.e., send the response)
+	 * 
+	 * @param resp
+	 * @param curTime
+	 */
 	public void end(ResponseType resp, long curTime) {
 		this.getResponse().setResponseTime(curTime);
 		switch (resp) {
