@@ -3,6 +3,7 @@ package piddle.sonos.si;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
@@ -14,7 +15,7 @@ public class Main {
 
 		// Test configuration variables
 		int numInquiries = 1000;
-		int numQAWorkers = 1;
+		int numQAWorkers = 3;
 		int timeToCompleteJobMils = 50;
 		int testsPerWindow = 5;
 		int windowLength = 600;
@@ -26,7 +27,7 @@ public class Main {
 		 * thread that creates all of the requests. We can give all of the other
 		 * cores/threads to the QA team
 		 */
-		int maxConcurThreads = Runtime.getRuntime().availableProcessors() - 2;
+		int maxConcurThreads = Runtime.getRuntime().availableProcessors() - 1;
 
 		QAManager manager = new QAManager(numQAWorkers, maxConcurThreads, timeToCompleteJobMils,
 				testsPerWindow, windowLength);
@@ -129,18 +130,28 @@ public class Main {
 
 	public static boolean checkTestLengthRespected(List<Response> responses,
 			int timeToCompleteJobMils) {
-		long time = 0;
 
-		for (Response resp : responses) {
-			if ((resp.getResponseType() == ResponseType.CONSUMED)
-					|| (resp.getResponseType() == ResponseType.TEST_ACCEPT)) {
-				if (resp.getTime() - time < timeToCompleteJobMils) {
-					return false;
+		Map<String, List<Response>> attendedResponses = responses.stream()
+				.filter(resp -> resp.getResponseType() == ResponseType.CONSUMED
+						|| resp.getResponseType() == ResponseType.TEST_ACCEPT)
+				.collect(Collectors.groupingBy(resp -> resp.getFulfilledBy()));
+
+		for (String key : attendedResponses.keySet()) {
+			long time = 0;
+			List<Response> sorted = attendedResponses.get(key).stream().sorted()
+					.collect(Collectors.toList());
+
+			for (Response resp : sorted) {
+				if ((resp.getResponseType() == ResponseType.CONSUMED)
+						|| (resp.getResponseType() == ResponseType.TEST_ACCEPT)) {
+					if (resp.getTime() - time < timeToCompleteJobMils) {
+						return false;
+					}
 				}
-			}
 
-			if (resp.getResponseType() == ResponseType.CONSUMED) {
-				time = resp.getTime();
+				if (resp.getResponseType() == ResponseType.CONSUMED) {
+					time = resp.getTime();
+				}
 			}
 		}
 		return true;
@@ -149,103 +160,175 @@ public class Main {
 	public static boolean checkBreaksRespected(List<Response> responses, int timeToCompleteJobMils,
 			int testsPerWindow, int windowLength) {
 
-		List<Response> attendedResponses = responses.stream()
-				.filter(resp -> resp.getResponseType() == ResponseType.CONSUMED).sorted()
-				.collect(Collectors.toList());
+		Map<String, List<Response>> attendedResponses = responses.stream()
+				.filter(resp -> resp.getResponseType() == ResponseType.CONSUMED)
+				.collect(Collectors.groupingBy(resp -> resp.getFulfilledBy()));
 
-		if (attendedResponses.size() <= testsPerWindow) {
-			return true;
-		}
+		for (String key : attendedResponses.keySet()) {
+			List<Response> fulfilledByResponses = attendedResponses.get(key).stream().sorted()
+					.collect(Collectors.toList());
 
-		for (int x = testsPerWindow; x < attendedResponses.size(); x++) {
-			if ((attendedResponses.get(x).getTime()
-					- attendedResponses.get(x - testsPerWindow).getTime()) < windowLength) {
-				return false;
+			if (fulfilledByResponses.size() <= testsPerWindow) {
+				break;
+			}
+
+			for (int x = testsPerWindow; x < fulfilledByResponses.size(); x++) {
+				if ((fulfilledByResponses.get(x).getTime()
+						- fulfilledByResponses.get(x - testsPerWindow).getTime()) < windowLength) {
+					return false;
+				}
 			}
 		}
+
 		return true;
 	}
 
 	public static void getMissedSales(List<Response> responses, int timeToCompleteJobMils,
 			int testsPerWindow, int windowLength) {
 
-		ArrayList<Long> attendedResponses = new ArrayList<Long>();
-		long averageInefficiency = 0;
-		int missedSales = 0;
+		long totalAvgInefficiency = 0;
+		int totalMissedSales = 0;
 
-		for (Response resp : responses) {
-			if (resp.getResponseType() == ResponseType.REJECTED) {
-				if (attendedResponses.size() == 0) {
-					System.out.println("Sale rejected when no requests have been made");
-				} else if (resp.getTime()
-						- attendedResponses.get(0).longValue() > timeToCompleteJobMils
-						&& (attendedResponses.size() < testsPerWindow
-								|| attendedResponses.get(testsPerWindow - 1).longValue()
-										+ windowLength < resp.getTime().longValue())) {
-					missedSales += 1;
-					// Calculates the amount of time over the timeToCompleteJob that the QA member
-					// was busy.
-					averageInefficiency += resp.getTime() - attendedResponses.get(0).longValue()
-							- timeToCompleteJobMils;
+		Map<String, List<Response>> filteredResponses = responses.stream()
+				.filter(resp -> resp.getResponseType() == ResponseType.CONSUMED)
+				.collect(Collectors.groupingBy(resp -> resp.getFulfilledBy()));
+
+		List<Response> rejectedResponses = responses.stream()
+				.filter(resp -> resp.getResponseType() == ResponseType.REJECTED)
+				.collect(Collectors.toList());
+
+		for (String key : filteredResponses.keySet()) {
+
+			long memberAvgInefficiency = 0;
+			int memberMissedSales = 0;
+			ArrayList<Long> window = new ArrayList<Long>();
+
+			filteredResponses.get(key).addAll(rejectedResponses);
+			List<Response> fulfilledResponses = filteredResponses.get(key).stream().sorted()
+					.collect(Collectors.toList());
+
+			for (Response resp : fulfilledResponses) {
+				if (resp.getResponseType() == ResponseType.REJECTED) {
+					if (window.size() == 0) {
+						System.out.println("Sale rejected when no requests have been made");
+					} else if (resp.getTime() - window.get(0).longValue() > timeToCompleteJobMils
+							&& (window.size() < testsPerWindow
+									|| window.get(testsPerWindow - 1).longValue()
+											+ windowLength < resp.getTime().longValue())) {
+						memberMissedSales += 1;
+						// Calculates the amount of time over the timeToCompleteJob that the QA
+						// member
+						// was busy.
+						memberAvgInefficiency += resp.getTime() - window.get(0).longValue()
+								- timeToCompleteJobMils;
+					}
+				}
+
+				if (resp.getResponseType() == ResponseType.CONSUMED) {
+					if (window.size() == testsPerWindow) {
+						window.remove(testsPerWindow - 1);
+					}
+
+					window.add(0, resp.getTime());
 				}
 			}
 
-			if (resp.getResponseType() == ResponseType.CONSUMED) {
-				if (attendedResponses.size() == testsPerWindow) {
-					attendedResponses.remove(testsPerWindow - 1);
-				}
-
-				attendedResponses.add(0, resp.getTime());
+			System.out
+					.println(String.format("QA Member %s missed sales due to code inefficiency %s",
+							key, String.valueOf(memberMissedSales)));
+			if (memberMissedSales != 0) {
+				System.out.println(String.format(
+						"QA Member %s average inefficiency causing missed sale: %s milisecond", key,
+						String.valueOf(memberAvgInefficiency / memberMissedSales)));
 			}
+
+			if (memberMissedSales != 0) {
+				totalAvgInefficiency += memberAvgInefficiency / memberMissedSales;
+			}
+			totalMissedSales += memberMissedSales;
+
 		}
 
-		System.out.println(String.format("Num missed sales due to code inefficiency %s",
-				String.valueOf(missedSales)));
-		if (missedSales != 0) {
-			System.out.println(
-					String.format("Average inefficiency causing missed sale: %s milisecond",
-							String.valueOf(averageInefficiency / missedSales)));
+		System.out.println(String.format("Total missed sales due to code inefficiency %s",
+				String.valueOf(totalMissedSales)));
+		if (totalMissedSales != 0) {
+			System.out.println(String.format(
+					"Average inefficiency causing missed sale: %s milisecond",
+					String.valueOf(totalAvgInefficiency / filteredResponses.keySet().size())));
 		}
+
 	}
 
 	public static void getMissedInqueries(List<Response> responses, int timeToCompleteJobMils,
 			int testsPerWindow, int windowLength) {
 
-		ArrayList<Long> attendedResponses = new ArrayList<Long>();
-		long averageInefficiency = 0;
-		int missedSales = 0;
+		long totalAvgInefficiency = 0;
+		int totalMissedSales = 0;
 
-		for (Response resp : responses) {
-			if (resp.getResponseType() == ResponseType.TEST_REJ) {
-				if (attendedResponses.size() == 0) {
-					System.out.println("Sale rejected when no requests have been made");
-				} else if (resp.getTime()
-						- attendedResponses.get(0).longValue() > timeToCompleteJobMils
-						&& (attendedResponses.size() < testsPerWindow
-								|| attendedResponses.get(testsPerWindow - 1).longValue()
-										+ windowLength < resp.getTime().longValue())) {
-					missedSales += 1;
-					// Calculates the amount of time over the timeToCompleteJob that the QA member
-					// was busy.
-					averageInefficiency += resp.getTime() - attendedResponses.get(0).longValue()
-							- timeToCompleteJobMils;
+		Map<String, List<Response>> filteredResponses = responses.stream()
+				.filter(resp -> resp.getResponseType() == ResponseType.CONSUMED)
+				.collect(Collectors.groupingBy(resp -> resp.getFulfilledBy()));
+
+		List<Response> rejectedResponses = responses.stream()
+				.filter(resp -> resp.getResponseType() == ResponseType.TEST_REJ)
+				.collect(Collectors.toList());
+
+		for (String key : filteredResponses.keySet()) {
+
+			long memberAvgInefficiency = 0;
+			int memberMissedSales = 0;
+			ArrayList<Long> window = new ArrayList<Long>();
+
+			filteredResponses.get(key).addAll(rejectedResponses);
+			List<Response> fulfilledResponses = filteredResponses.get(key).stream().sorted()
+					.collect(Collectors.toList());
+
+			for (Response resp : fulfilledResponses) {
+				if (resp.getResponseType() == ResponseType.TEST_REJ) {
+					if (window.size() == 0) {
+						System.out.println("Sale rejected when no requests have been made");
+					} else if (resp.getTime() - window.get(0).longValue() > timeToCompleteJobMils
+							&& (window.size() < testsPerWindow
+									|| window.get(testsPerWindow - 1).longValue()
+											+ windowLength < resp.getTime().longValue())) {
+						memberMissedSales += 1;
+						// Calculates the amount of time over the timeToCompleteJob that the QA
+						// member
+						// was busy.
+						memberAvgInefficiency += resp.getTime() - window.get(0).longValue()
+								- timeToCompleteJobMils;
+					}
+				}
+
+				if (resp.getResponseType() == ResponseType.CONSUMED) {
+					if (window.size() == testsPerWindow) {
+						window.remove(testsPerWindow - 1);
+					}
+
+					window.add(0, resp.getTime());
 				}
 			}
 
-			if (resp.getResponseType() == ResponseType.CONSUMED) {
-				if (attendedResponses.size() == testsPerWindow) {
-					attendedResponses.remove(testsPerWindow - 1);
-				}
-
-				attendedResponses.add(0, resp.getTime());
-			}
-		}
-		System.out.println(String.format("Num missed inqueries due to code inefficiency %s",
-				String.valueOf(missedSales)));
-		if (missedSales != 0) {
 			System.out.println(
-					String.format("Average inefficiency causing missed inquery: %s milisecond",
-							String.valueOf(averageInefficiency / missedSales)));
+					String.format("QA Member %s missed inqueries due to code inefficiency %s", key,
+							String.valueOf(memberMissedSales)));
+			if (memberMissedSales != 0) {
+				System.out.println(String.format(
+						"QA Member %s average inefficiency causing missed inquery: %s milisecond",
+						key, String.valueOf(memberAvgInefficiency / memberMissedSales)));
+			}
+
+			totalAvgInefficiency += memberAvgInefficiency / memberMissedSales;
+			totalMissedSales += memberMissedSales;
+
+		}
+
+		System.out.println(String.format("Total missed inqueries due to code inefficiency %s",
+				String.valueOf(totalMissedSales)));
+		if (totalMissedSales != 0) {
+			System.out.println(String.format(
+					"Average inefficiency causing missed inquery: %s milisecond",
+					String.valueOf(totalAvgInefficiency / filteredResponses.keySet().size())));
 		}
 	}
 

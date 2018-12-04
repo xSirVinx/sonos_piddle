@@ -20,12 +20,6 @@ public class Request {
 		this.resp = new Response();
 	}
 
-	/**
-	 * Simulates a response to a request. In reality this would send back some data
-	 * consumable by a browser/application (JSON, HTML, images, etc) but for this
-	 * test we need to know if a QA member consumed the request and the time it was
-	 * consumed not.
-	 */
 	public void end(ResponseType resp, long curTime) {
 		this.getResponse().setResponseTime(curTime);
 		switch (resp) {
